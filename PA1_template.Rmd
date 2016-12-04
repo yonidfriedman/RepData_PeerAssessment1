@@ -1,25 +1,124 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Personal Activity Analysis"
+author: "Jonathan Friedman"
+date: "December 4, 2016"
+output: html_document
 ---
 
+## Loading and Preprocessing the Data
 
-## Loading and preprocessing the data
+```{Load Data}
+theURL <- ("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip")
+z <- tempfile()
+download.file(theURL, z)
+unzip(z)
+activity <- read.csv("activity.csv")
+activity$date <- as.Date(as.character(activity$date), "%Y-%m-%d")
+```
 
+## What is the mean total number of steps taken per day?
 
+Calculate the total number of steps taken per day
 
-## What is mean total number of steps taken per day?
+```{Calculate Steps}
+library(dplyr)
+steps_day <- activity %>%  group_by(date) %>% summarize(sum = sum(steps, na.rm = TRUE))
+```
 
+Then, make a histogram of the total number of steps taken each day
+```{Histogram or number of steps}
+hist(steps_day$sum, breaks = 10, col = "blue", main = "Histogram of steps by date", ylab = "Frequency", xlab = "Steps Taken")
+```
 
+Then, calculate and report the median and the mean of steps taken per day
+```{Median and Mean Steps}
+steps_ave <- mean(steps_day$sum)
+steps_median <- median(steps_day$sum)
+
+steps_ave
+steps_median
+```
 
 ## What is the average daily activity pattern?
 
+Make a time-series plot of steps taken by interval across days
+First, calculate the average number 
+
+```{Average Steps}
+steps_interval <- activity %>% group_by(interval) %>% summarize(mean = mean(steps, na.rm = TRUE))
+```
+
+Then, plot the line graph
+```{Line Graph}
+with(steps_interval, plot(interval, mean, type = "l", main = "Average Steps Taken by Interval", ylab = "Average Steps", xlab = "Interval"))
+```
+
+Report which interval had the highest average steps across the time period
+
+```{Highest Interval}
+which.max(steps_interval$mean)
+```
+
+## Imputing Missing Values
+Calculate and report the total number of missing values in the data set (number of rows with NA's)
+
+```{Missing}
+missing <- activity[is.na(activity$steps), ]
+nrow(missing)
+```
 
 
-## Imputing missing values
+For NA's, assume appropriate values are the average steps for that interval across the time period
+
+```{Average Steps}
+activity$steps <- ifelse(is.na(activity$steps), steps_interval$mean[steps_interval$interval %in% activity$interval], activity$steps)
+```
+
+Calculate the total number of steps taken each (including inputed values)
+
+```{Total Steps}
+steps_day_complete <- activity %>%  group_by(date) %>% summarize(sum = sum(steps))
+```
+
+Plot the histogram
+```{Plot Histogram}
+hist(steps_day_complete$sum, breaks = 10, col = "blue", main = "Total Steps Taken By Day", ylab = "Frequency", xlab = "Number of Steps")
+```
+
+Calculate and report the median and the mean of steps taken per day
+```{Median and Mean}
+steps_ave1 <- mean(steps_day_complete$sum)
+steps_median1 <- median(steps_day_complete$sum)
+
+steps_ave1
+steps_median1
+```
+
+Since the inputed values are the average values, the average steps per day is unchanged. The median, however, changes slightly.
+
+## Are there any differences in activity patterns between weekdays and weekends?
+
+Create a new factor variable in the data set for weekdays and weekends
+
+```{Factor Variable}
+activity1$day <- ifelse(weekdays(activity1[, 2]) %in% c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday"), "Weekday", "Weekend")
+activity1$day <- as.factor(activity1$day)
+```
+
+Segment mean steps by interval for weekdays and weekends
+
+```{Weekday and Weekend Mean}
+weekday_interval <- activity1 %>% filter(day == "Weekday") %>% group_by(interval) %>% summarize(mean = mean(steps))
+weekend_interval <- activity1 %>% filter(day == "Weekend") %>% group_by(interval) %>% summarize(mean = mean(steps))
+```
 
 
+Finally, plot the line graphs
 
-## Are there differences in activity patterns between weekdays and weekends?
+```{Panel Plot}
+par(mfrow= c(1,2))
+plot(weekday_interval$mean, type = "l", main = "Weekday Average Steps by Interval", xlab = "Interval", ylab = "Average Steps")
+plot(weekend_interval$mean, type = "l", main = "Weekend Average Steps by Interval", xlab = "Interval", ylab = "Average Steps")
+```
+
+
